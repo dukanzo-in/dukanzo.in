@@ -85,18 +85,50 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
     window.scrollTo(0, 0);
   };
 
-  const onSubmit = (data: any) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const onSubmit = async (data: any) => {
+    if (isSubmitting) return; // Prevent duplicate submission
+
+    setIsSubmitting(true);
     const finalPayload = {
       ...tierData,
-      requirements: data
+      requirements: data,
+      customNotes: data.special_requirements || ""
     };
     
-    // Save the final payload for Issue 7
-    localStorage.setItem("dukanzo_final_payload", JSON.stringify(finalPayload));
-    console.log("Proceeding to Submission Phase (Issue #7)...", finalPayload);
-    
-    // Placeholder alert since Issue #7 is out of scope for now
-    alert("Requirements collected successfully! Next phase (Issue #7) will handle submission.");
+    try {
+      // Import createClient dynamically or use a shared hook. 
+      // For simplicity, we use the global client approach since it's a client component.
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      
+      // Call the Edge Function
+      const { data: responseData, error } = await supabase.functions.invoke('submit-project-request', {
+        body: finalPayload,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to invoke function");
+      }
+
+      if (responseData?.error) {
+        throw new Error(responseData.error);
+      }
+
+      // Cleanup local storage
+      localStorage.removeItem("dukanzo_configuration");
+      localStorage.removeItem("dukanzo_srs_draft");
+      localStorage.removeItem("dukanzo_final_payload");
+
+      // Redirect to success screen with request ID
+      router.push(`/success?id=${responseData.requestReference}`);
+    } catch (err: any) {
+      console.error("Submission error:", err);
+      alert("We couldn't submit your requirements right now. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isLoaded) return <div className="text-center py-12">Loading builder...</div>;
@@ -330,8 +362,8 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
                 Next <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button type="submit" size="lg" className="font-bold px-8">
-                Submit Request <CheckCircle2 className="w-5 h-5 ml-2" />
+              <Button type="submit" size="lg" className="font-bold px-8" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Request'} {!isSubmitting && <CheckCircle2 className="w-5 h-5 ml-2" />}
               </Button>
             )}
           </CardFooter>
