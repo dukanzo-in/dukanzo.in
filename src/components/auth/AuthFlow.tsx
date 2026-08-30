@@ -1,387 +1,257 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { AuthService } from "@/lib/auth-service";
-import { Loader2, Phone, ShieldCheck, Lock, UserPlus, LogIn, KeyRound } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Mail, Lock, LogIn, UserPlus, ArrowLeft, Eye, EyeOff, CheckCircle } from "lucide-react";
 
-type AuthMode = "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD";
-type AuthStep = "CREDENTIALS" | "OTP" | "NEW_PASSWORD";
+type Mode = "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD" | "EMAIL_SENT";
 
 export function AuthFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/configure";
 
-  const [mode, setMode] = useState<AuthMode>("LOGIN");
-  const [step, setStep] = useState<AuthStep>("CREDENTIALS");
-  
-  const [phone, setPhone] = useState("");
-  const [formattedPhone, setFormattedPhone] = useState("");
+  const [mode, setMode] = useState<Mode>("LOGIN");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [cooldown, setCooldown] = useState(0);
 
-  // Handle countdown for resend OTP
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (cooldown > 0) {
-      timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [cooldown]);
-
-  const formatPhone = (rawPhone: string) => {
-    const cleanPhone = rawPhone.replace(/\D/g, "");
-    return `+91${cleanPhone}`;
+  const reset = (newMode: Mode) => {
+    setMode(newMode);
+    setError("");
+    setPassword("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (phone.length < 10) return setError("Please enter a valid phone number.");
+    if (!email) return setError("Please enter your email.");
     if (password.length < 6) return setError("Password must be at least 6 characters.");
-
-    const finalPhone = formatPhone(phone);
     setLoading(true);
-
-    const res = await AuthService.login(finalPhone, password);
+    const res = await AuthService.loginWithEmail(email, password);
     setLoading(false);
-
     if (res.success && res.sessionEstablished) {
       router.push(redirectTo);
       router.refresh();
     } else {
-      setError(res.error || "Invalid phone number or password.");
+      setError(res.error || "Login failed.");
     }
   };
 
-  const handleSignUp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setError("");
-
-    if (phone.length < 10) return setError("Please enter a valid phone number.");
-    if (password.length < 6) return setError("Password must be at least 6 characters.");
-
-    const finalPhone = formatPhone(phone);
-    setFormattedPhone(finalPhone);
-    setLoading(true);
-
-    const res = await AuthService.signUp(finalPhone, password);
-    setLoading(false);
-
-    if (res.success) {
-      setStep("OTP");
-      setCooldown(60);
-    } else {
-      setError(res.error || "Failed to sign up.");
-    }
-  };
-
-  const handleForgotPassword = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setError("");
-
-    if (phone.length < 10) return setError("Please enter a valid phone number.");
-    const finalPhone = formatPhone(phone);
-    setFormattedPhone(finalPhone);
-    setLoading(true);
-
-    const res = await AuthService.sendOTP(finalPhone);
-    setLoading(false);
-
-    if (res.success) {
-      setStep("OTP");
-      setCooldown(60);
-    } else {
-      setError(res.error || "Failed to send reset code.");
-    }
-  };
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (otp.length !== 6) return setError("Please enter the 6-digit code.");
-
+    if (!email) return setError("Please enter your email.");
+    if (password.length < 6) return setError("Password must be at least 6 characters.");
     setLoading(true);
-    const res = await AuthService.verifyOTP(formattedPhone, otp);
+    const res = await AuthService.signUpWithEmail(email, password);
     setLoading(false);
-
-    if (res.success && res.sessionEstablished) {
-      if (mode === "FORGOT_PASSWORD") {
-        setStep("NEW_PASSWORD");
-        setPassword("");
-      } else {
-        router.push(redirectTo);
-        router.refresh();
-      }
+    if (res.success) {
+      setMode("EMAIL_SENT");
     } else {
-      setError(res.error || "Invalid code.");
+      setError(res.error || "Sign up failed.");
     }
   };
 
-  const handleSetNewPassword = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (password.length < 6) return setError("Password must be at least 6 characters.");
-
+    if (!email) return setError("Please enter your email.");
     setLoading(true);
-    const res = await AuthService.updatePassword(password);
+    const res = await AuthService.sendPasswordReset(email);
     setLoading(false);
-
     if (res.success) {
-      router.push(redirectTo);
-      router.refresh();
+      setMode("EMAIL_SENT");
     } else {
-      setError(res.error || "Failed to update password.");
+      setError(res.error || "Failed to send reset email.");
     }
-  };
-
-  const resetState = (newMode: AuthMode) => {
-    setMode(newMode);
-    setStep("CREDENTIALS");
-    setError("");
-    setOtp("");
-    setPassword("");
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 md:p-8 bg-card rounded-xl border-2 shadow-sm">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-black tracking-tight mb-2">
-          {step === "CREDENTIALS" && mode === "LOGIN" && "Welcome Back"}
-          {step === "CREDENTIALS" && mode === "SIGNUP" && "Create Account"}
-          {step === "CREDENTIALS" && mode === "FORGOT_PASSWORD" && "Reset Password"}
-          {step === "OTP" && "Verify Number"}
-          {step === "NEW_PASSWORD" && "Set New Password"}
-        </h1>
-        <p className="text-muted-foreground">
-          {step === "CREDENTIALS" && mode === "FORGOT_PASSWORD" && "Enter your WhatsApp number to receive a reset code."}
-          {step === "CREDENTIALS" && mode !== "FORGOT_PASSWORD" && "Enter your details to continue."}
-          {step === "OTP" && `We sent a code to ${formattedPhone.replace(/(\d{2})(\d{5})(\d{5})/, "$1 ***** $3")}`}
-          {step === "NEW_PASSWORD" && "Enter a new secure password for your account."}
-        </p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md">
 
-      {error && (
-        <div className="mb-6 p-3 bg-destructive/10 text-destructive text-sm font-medium rounded-md text-center">
-          {error}
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <span className="text-4xl font-black tracking-tight">
+            Dukanzo<span className="text-primary">.</span>
+          </span>
         </div>
-      )}
 
-      {step === "CREDENTIALS" && mode !== "FORGOT_PASSWORD" && (
-        <Tabs defaultValue="login" value={mode.toLowerCase()} onValueChange={(v) => resetState(v.toUpperCase() as AuthMode)}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="login">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone-login">WhatsApp Number</Label>
+        {/* Card */}
+        <div className="bg-card border rounded-2xl shadow-lg p-8">
+
+          {/* Email Sent Success */}
+          {mode === "EMAIL_SENT" && (
+            <div className="flex flex-col items-center text-center py-4">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Check your inbox!</h2>
+              <p className="text-muted-foreground mb-6">
+                We sent an email to <strong className="text-foreground">{email}</strong>.<br />
+                Click the link inside to continue.
+              </p>
+              <button
+                onClick={() => reset("LOGIN")}
+                className="text-sm text-primary font-medium hover:underline"
+              >
+                Back to Login
+              </button>
+            </div>
+          )}
+
+          {/* Login */}
+          {mode === "LOGIN" && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Welcome back</h2>
+                <p className="text-muted-foreground text-sm mt-1">Sign in to your account to continue.</p>
+              </div>
+              {error && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg text-center">{error}</div>}
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <span className="absolute left-10 top-1/2 -translate-y-1/2 text-lg text-muted-foreground font-medium">+91</span>
-                  <Input
-                    id="phone-login"
-                    type="tel"
-                    placeholder="99999 99999"
-                    className="pl-20 h-12 text-lg"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                     disabled={loading}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
                     autoFocus
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="password-login">Password</Label>
-                  <button type="button" onClick={() => resetState("FORGOT_PASSWORD")} className="text-sm font-medium text-primary hover:underline">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    disabled={loading}
+                    className="w-full pl-10 pr-10 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="flex justify-end">
+                  <button type="button" onClick={() => reset("FORGOT_PASSWORD")} className="text-xs text-primary hover:underline font-medium">
                     Forgot password?
                   </button>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="password-login"
-                    type="password"
-                    placeholder="••••••••"
-                    className="pl-10 h-12 text-lg"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-60"
+                >
+                  {loading ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <LogIn className="w-4 h-4" />}
+                  Sign In
+                </button>
+              </form>
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <button onClick={() => reset("SIGNUP")} className="text-primary font-semibold hover:underline">
+                  Sign up
+                </button>
+              </p>
+            </>
+          )}
+
+          {/* Sign Up */}
+          {mode === "SIGNUP" && (
+            <>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Create account</h2>
+                <p className="text-muted-foreground text-sm mt-1">Get started with Dukanzo today.</p>
               </div>
-              <Button type="submit" className="w-full h-12 text-lg font-bold mt-2" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><LogIn className="mr-2 h-5 w-5" /> Login</>}
-              </Button>
-            </form>
-          </TabsContent>
-          
-          <TabsContent value="signup">
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone-signup">WhatsApp Number</Label>
+              {error && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg text-center">{error}</div>}
+              <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <span className="absolute left-10 top-1/2 -translate-y-1/2 text-lg text-muted-foreground font-medium">+91</span>
-                  <Input
-                    id="phone-signup"
-                    type="tel"
-                    placeholder="99999 99999"
-                    className="pl-20 h-12 text-lg"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                     disabled={loading}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
                     autoFocus
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password-signup">Create Password</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="password-signup"
-                    type="password"
-                    placeholder="Min 6 characters"
-                    className="pl-10 h-12 text-lg"
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create password (min 6 chars)"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={e => setPassword(e.target.value)}
                     disabled={loading}
+                    className="w-full pl-10 pr-10 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-60"
+                >
+                  {loading ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                  Create Account
+                </button>
+              </form>
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <button onClick={() => reset("LOGIN")} className="text-primary font-semibold hover:underline">
+                  Sign in
+                </button>
+              </p>
+            </>
+          )}
+
+          {/* Forgot Password */}
+          {mode === "FORGOT_PASSWORD" && (
+            <>
+              <button onClick={() => reset("LOGIN")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition">
+                <ArrowLeft className="w-4 h-4" /> Back to login
+              </button>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Reset password</h2>
+                <p className="text-muted-foreground text-sm mt-1">Enter your email and we&apos;ll send you a reset link.</p>
+              </div>
+              {error && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg text-center">{error}</div>}
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    placeholder="Email address"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    disabled={loading}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                    autoFocus
                   />
                 </div>
-              </div>
-              <Button type="submit" className="w-full h-12 text-lg font-bold mt-2" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><UserPlus className="mr-2 h-5 w-5" /> Create Account</>}
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {step === "CREDENTIALS" && mode === "FORGOT_PASSWORD" && (
-        <form onSubmit={handleForgotPassword} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="phone-reset">WhatsApp Number</Label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <span className="absolute left-10 top-1/2 -translate-y-1/2 text-lg text-muted-foreground font-medium">+91</span>
-              <Input
-                id="phone-reset"
-                type="tel"
-                placeholder="99999 99999"
-                className="pl-20 h-12 text-lg"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                disabled={loading}
-                autoFocus
-              />
-            </div>
-          </div>
-          <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Send Reset Code"}
-          </Button>
-          <div className="text-center mt-4">
-            <button type="button" onClick={() => resetState("LOGIN")} className="text-sm font-medium text-primary hover:underline">
-              Back to Login
-            </button>
-          </div>
-        </form>
-      )}
-
-      {step === "OTP" && (
-        <form onSubmit={handleVerifyOTP} className="space-y-6 flex flex-col items-center">
-          <div className="space-y-2 w-full flex flex-col items-center">
-            <Label htmlFor="otp" className="sr-only">One-Time Password</Label>
-            <div className="flex justify-center">
-              <InputOTP 
-                id="otp" 
-                maxLength={6} 
-                value={otp} 
-                onChange={setOtp} 
-                disabled={loading}
-                autoFocus
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} className="h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl" />
-                  <InputOTPSlot index={1} className="h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl" />
-                  <InputOTPSlot index={2} className="h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl" />
-                  <InputOTPSlot index={3} className="h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl" />
-                  <InputOTPSlot index={4} className="h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl" />
-                  <InputOTPSlot index={5} className="h-12 w-12 text-lg sm:h-14 sm:w-14 sm:text-xl" />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-          </div>
-          
-          <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={loading || otp.length !== 6}>
-            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><ShieldCheck className="mr-2 h-5 w-5" /> Verify & Continue</>}
-          </Button>
-
-          <div className="text-center mt-4">
-            <button 
-              type="button" 
-              onClick={() => mode === "FORGOT_PASSWORD" ? handleForgotPassword() : handleSignUp()} 
-              disabled={cooldown > 0 || loading}
-              className="text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline transition-all"
-            >
-              {cooldown > 0 ? `Resend OTP in ${cooldown}s` : "Didn't receive code? Resend"}
-            </button>
-            <div className="mt-2">
-              <button 
-                type="button" 
-                onClick={() => {
-                  setStep("CREDENTIALS");
-                  setOtp("");
-                  setError("");
-                }} 
-                className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-all"
-              >
-                Change phone number
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
-
-      {step === "NEW_PASSWORD" && (
-        <form onSubmit={handleSetNewPassword} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
-            <div className="relative">
-              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="new-password"
-                type="password"
-                placeholder="Min 6 characters"
-                className="pl-10 h-12 text-lg"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                autoFocus
-              />
-            </div>
-          </div>
-          <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={loading || password.length < 6}>
-            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Update Password & Login"}
-          </Button>
-        </form>
-      )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition disabled:opacity-60"
+                >
+                  {loading ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <Mail className="w-4 h-4" />}
+                  Send Reset Link
+                </button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
