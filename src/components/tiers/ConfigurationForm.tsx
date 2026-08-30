@@ -144,17 +144,18 @@ export function ConfigurationForm({ tiers, tierOptions, initialTierId }: Configu
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Tier Selection */}
-      <div className="flex justify-center mb-8">
-        <div className="inline-flex bg-muted/50 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
+      <div className="flex flex-col items-center mb-10">
+        <h2 className="text-xl font-bold mb-4">Confirm Your Plan</h2>
+        <div className="inline-flex bg-muted/50 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto shadow-inner">
           {tiers.map((tier) => (
             <button
               key={tier.id}
               type="button"
               onClick={() => setActiveTierId(tier.id)}
-              className={`flex-1 sm:flex-none px-6 py-3 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`flex-1 sm:flex-none px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${
                 activeTierId === tier.id 
-                  ? "bg-primary text-primary-foreground shadow-sm" 
-                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-lg scale-105" 
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground hover:scale-105"
               }`}
             >
               {tier.name}
@@ -163,17 +164,25 @@ export function ConfigurationForm({ tiers, tierOptions, initialTierId }: Configu
         </div>
       </div>
 
-      <Card className="border-2 shadow-sm">
-        <CardHeader className="bg-muted/10 border-b border-border/50 pb-8">
-          <CardTitle className="text-2xl">{activeTier?.name} Configuration</CardTitle>
-          <CardDescription className="text-base mt-2">
-            {activeTier?.description}
-          </CardDescription>
+      <Card className="border-2 shadow-xl rounded-2xl overflow-hidden transition-all duration-500">
+        <CardHeader className="bg-gradient-to-r from-muted/50 to-muted/10 border-b pb-8 pt-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-3xl font-black">{activeTier?.name} Configuration</CardTitle>
+              <CardDescription className="text-base mt-2 max-w-xl">
+                {activeTier?.description}
+              </CardDescription>
+            </div>
+            <div className="hidden sm:block text-right">
+              <div className="text-sm text-muted-foreground font-semibold uppercase tracking-wider mb-1">Starting at</div>
+              <div className="text-3xl font-black text-primary">₹{activeTier?.base_price}</div>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="pt-8">
-          <div className="space-y-2 mb-8">
-            <h3 className="text-xl font-bold tracking-tight">Included Features</h3>
-            <p className="text-sm text-muted-foreground">Select your preferences below. Options vary by tier.</p>
+        <CardContent className="pt-10">
+          <div className="space-y-2 mb-10">
+            <h3 className="text-2xl font-bold tracking-tight">Customize Your Package</h3>
+            <p className="text-base text-muted-foreground">Select your preferences below to tailor the project to your exact needs.</p>
           </div>
 
           <div className="space-y-2 divide-y">
@@ -198,16 +207,16 @@ export function ConfigurationForm({ tiers, tierOptions, initialTierId }: Configu
             />
           </div>
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t border-border/50 p-6 flex flex-col gap-4">
-          <div className="text-lg font-medium self-start">
-            Base Price: <span className="font-bold text-xl">₹{activeTier?.base_price}</span>
+        <CardFooter className="bg-muted/30 border-t p-8 flex flex-col sm:flex-row gap-6 items-center justify-between">
+          <div className="text-lg font-medium w-full sm:w-auto text-center sm:text-left sm:hidden">
+            Starting at: <span className="font-black text-2xl text-primary block">₹{activeTier?.base_price}</span>
           </div>
-          <div className="flex w-full justify-between items-center">
-            <Button type="button" variant="outline" className="text-left justify-start font-normal" onClick={() => {/* Skip to builder */}}>I don&apos;t know, help me decide</Button>
-            <Button type="submit" size="lg" className="font-bold text-md px-8">
-              Continue to Requirements
-            </Button>
-          </div>
+          <Button type="button" variant="ghost" className="font-semibold text-muted-foreground hover:text-foreground w-full sm:w-auto" onClick={() => {/* Skip to builder */}}>
+            I don&apos;t know, help me decide
+          </Button>
+          <Button type="submit" size="lg" className="font-bold text-lg px-10 py-6 rounded-xl w-full sm:w-auto shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+            Continue to Requirements →
+          </Button>
         </CardFooter>
       </Card>
     </form>

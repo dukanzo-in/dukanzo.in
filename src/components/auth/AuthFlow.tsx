@@ -11,6 +11,7 @@ export function AuthFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/configure";
+  const isConfigureRedirect = redirectTo.includes("/configure");
 
   const [mode, setMode] = useState<Mode>("LOGIN");
   const [email, setEmail] = useState("");
@@ -111,6 +112,11 @@ export function AuthFlow() {
                 <h2 className="text-2xl font-bold">Welcome back</h2>
                 <p className="text-muted-foreground text-sm mt-1">Sign in to your account to continue.</p>
               </div>
+              {isConfigureRedirect && (
+                <div className="mb-6 p-4 bg-primary/10 text-primary text-sm rounded-xl text-center font-medium border border-primary/20">
+                  Sign in to configure your selected plan.
+                </div>
+              )}
               {error && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg text-center">{error}</div>}
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="relative">
@@ -169,6 +175,11 @@ export function AuthFlow() {
                 <h2 className="text-2xl font-bold">Create account</h2>
                 <p className="text-muted-foreground text-sm mt-1">Get started with Dukanzo today.</p>
               </div>
+              {isConfigureRedirect && (
+                <div className="mb-6 p-4 bg-primary/10 text-primary text-sm rounded-xl text-center font-medium border border-primary/20">
+                  Create an account to configure your selected plan.
+                </div>
+              )}
               {error && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg text-center">{error}</div>}
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="relative">

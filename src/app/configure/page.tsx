@@ -17,7 +17,9 @@ export default async function ConfigurePage(props: {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth?redirect=/configure");
+    const tierParam = searchParams.tier ? `?tier=${searchParams.tier}` : '';
+    const redirectUrl = `/configure${tierParam}`;
+    redirect(`/auth?redirect=${encodeURIComponent(redirectUrl)}`);
   }
 
   // Fetch all active tiers
