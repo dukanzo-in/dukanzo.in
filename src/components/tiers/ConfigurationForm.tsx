@@ -25,7 +25,7 @@ export interface TierOption {
   option_value: string;
   display_name: string;
   input_type: string;
-  choices?: any[];
+  choices?: string[];
 }
 
 interface ConfigurationFormProps {
