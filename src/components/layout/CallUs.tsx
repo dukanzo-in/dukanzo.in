@@ -9,11 +9,11 @@ import Link from "next/link";
 export function CallUs() {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Configuration for contacts (could be driven by env vars in a real setup)
+  // Configuration for contacts driven by env vars
   const contact = {
-    phone: "tel:+919876543210",
-    whatsapp: "https://wa.me/919876543210",
-    email: "mailto:hello@dukanzo.in"
+    phone: process.env.NEXT_PUBLIC_DUKANZO_PHONE || "tel:+910000000000",
+    whatsapp: process.env.NEXT_PUBLIC_DUKANZO_WHATSAPP || "https://wa.me/910000000000",
+    email: process.env.NEXT_PUBLIC_DUKANZO_EMAIL || "mailto:hello@dukanzo.in"
   };
 
   return (

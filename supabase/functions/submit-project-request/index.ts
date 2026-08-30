@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
     const answersToInsert = [];
     for (const [key, value] of Object.entries(requirements || {})) {
       if (value) {
-        let answerText = typeof value === 'object' ? JSON.stringify(value) : String(value);
+        const answerText = typeof value === 'object' ? JSON.stringify(value) : String(value);
         answersToInsert.push({
           request_id: requestId,
           question_id: key, // Assuming keys are question UUIDs
@@ -183,9 +183,9 @@ Deno.serve(async (req) => {
       status: 200,
     })
 
-  } catch (error: any) {
-    console.error("Submission Error:", error);
-    return new Response(JSON.stringify({ error: error.message || 'Internal Server Error' }), {
+  } catch (error: unknown) {
+    console.error("Submit Project Request Error:", error);
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

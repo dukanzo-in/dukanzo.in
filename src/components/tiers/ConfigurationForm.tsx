@@ -25,7 +25,7 @@ export interface TierOption {
   option_value: string;
   display_name: string;
   input_type: string;
-  choices?: any;
+  choices?: any[];
 }
 
 interface ConfigurationFormProps {
@@ -37,17 +37,17 @@ interface ConfigurationFormProps {
 export function ConfigurationForm({ tiers, tierOptions, initialTierId }: ConfigurationFormProps) {
   const router = useRouter();
   const [activeTierId, setActiveTierId] = useState(initialTierId);
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm();
+  const { register, control, handleSubmit } = useForm();
   
   const activeTier = tiers.find(t => t.id === activeTierId);
   const activeOptions = tierOptions.filter(o => o.tier_id === activeTierId);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: Record<string, unknown>) => {
     // Collect the configuration specific to the active tier, plus custom notes
     const payload = {
       tierId: activeTierId,
       tierName: activeTier?.name,
-      configuration: data[activeTierId] || {},
+      configuration: (data as Record<string, unknown>)[activeTierId] || {},
       customNotes: data.customNotes || ""
     };
 
@@ -185,7 +185,7 @@ export function ConfigurationForm({ tiers, tierOptions, initialTierId }: Configu
           
           <div className="mt-12 space-y-3">
             <Label htmlFor="customNotes" className="text-xl font-bold tracking-tight block">
-              Anything else you'd like us to know?
+              Anything else you&apos;d like us to know?
             </Label>
             <p className="text-sm text-muted-foreground pb-2">
               Have a specific feature request or custom requirement not listed above? Describe it here.
@@ -198,13 +198,16 @@ export function ConfigurationForm({ tiers, tierOptions, initialTierId }: Configu
             />
           </div>
         </CardContent>
-        <CardFooter className="bg-muted/10 border-t border-border/50 p-6 flex justify-between items-center">
-          <div className="text-lg font-medium">
+        <CardFooter className="bg-muted/10 border-t border-border/50 p-6 flex flex-col gap-4">
+          <div className="text-lg font-medium self-start">
             Base Price: <span className="font-bold text-xl">₹{activeTier?.base_price}</span>
           </div>
-          <Button type="submit" size="lg" className="font-bold text-md px-8">
-            Continue to Requirements
-          </Button>
+          <div className="flex w-full justify-between items-center">
+            <Button type="button" variant="outline" className="text-left justify-start font-normal" onClick={() => {/* Skip to builder */}}>I don&apos;t know, help me decide</Button>
+            <Button type="submit" size="lg" className="font-bold text-md px-8">
+              Continue to Requirements
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </form>

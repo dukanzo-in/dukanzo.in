@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
 
     // Store in Supabase Storage
     const fileName = `${user.id}/v1/${srsData.requestReference}.html`;
-    const { data: uploadData, error: uploadError } = await supabaseAdmin
+    const { error: uploadError } = await supabaseAdmin
       .storage
       .from('srs')
       .upload(fileName, htmlContent, {
@@ -145,9 +145,9 @@ Deno.serve(async (req) => {
       status: 200,
     })
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("SRS Generation Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

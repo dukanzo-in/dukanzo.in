@@ -25,10 +25,8 @@ export default async function SuccessPage(props: {
             <CheckCircle2 className="w-10 h-10" />
           </div>
           
-          <h1 className="text-3xl font-black tracking-tight mb-4">You're all set.</h1>
-          <p className="text-lg text-muted-foreground mb-8">
-            Your website requirements have been successfully sent to the Dukanzo team.
-          </p>
+          <h1 className="text-3xl font-black tracking-tight mb-4">You&apos;re all set.</h1>
+          <p className="text-xl text-muted-foreground mb-8">We&apos;ll review your requirements and get back to you shortly.</p>
 
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-8">
             <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -43,14 +41,14 @@ export default async function SuccessPage(props: {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
-              href="https://wa.me/919876543210" 
+              href={process.env.NEXT_PUBLIC_DUKANZO_WHATSAPP || "https://wa.me/910000000000"} 
               target="_blank"
               className={cn(buttonVariants({ variant: "default", size: "lg" }), "font-bold")}
             >
               <MessageSquare className="w-4 h-4 mr-2" /> WhatsApp Us
             </Link>
             <Link 
-              href="tel:+919876543210"
+              href={process.env.NEXT_PUBLIC_DUKANZO_PHONE || "tel:+910000000000"}
               className={cn(buttonVariants({ variant: "outline", size: "lg" }), "font-bold border-2")}
             >
               <Phone className="w-4 h-4 mr-2" /> Call Us
