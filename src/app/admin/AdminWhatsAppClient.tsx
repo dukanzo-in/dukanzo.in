@@ -1,42 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, Smartphone, LogOut, RefreshCcw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Loader2, Smartphone, Wifi, WifiOff, RefreshCw, LogOut, ShieldCheck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
+type Status = 'CONNECTED' | 'WAITING_FOR_QR' | 'CONNECTING' | 'NOT_CONNECTED' | 'DISCONNECTED' | 'LOGGED_OUT' | 'Loading...' | 'Error contacting service' | 'Connection Error';
+
 export function AdminWhatsAppClient() {
-    const [status, setStatus] = useState<string>('Loading...');
+    const [status, setStatus] = useState<Status>('Loading...');
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fetchStatus = async () => {
+    const getPin = () => new URLSearchParams(window.location.search).get('pin') || '';
+
+    const fetchStatus = useCallback(async () => {
         try {
-            const res = await fetch('/api/admin/whatsapp');
+            const res = await fetch(`/api/admin/whatsapp?pin=${getPin()}`);
             if (res.ok) {
                 const data = await res.json();
-                setStatus(data.status);
-                setQrCode(data.qr);
+                setStatus(data.status || 'NOT_CONNECTED');
+                setQrCode(data.qr || null);
             } else {
                 setStatus('Error contacting service');
             }
-        } catch (err) {
+        } catch {
             setStatus('Connection Error');
         }
-    };
+    }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchStatus();
         const interval = setInterval(fetchStatus, 3000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchStatus]);
 
     const handleAction = async (action: 'link' | 'disconnect') => {
         setIsLoading(true);
         try {
-            await fetch('/api/admin/whatsapp', {
+            await fetch(`/api/admin/whatsapp?pin=${getPin()}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action })
@@ -47,66 +48,182 @@ export function AdminWhatsAppClient() {
         }
     };
 
+    const isConnected = status === 'CONNECTED';
+    const isWaiting = status === 'WAITING_FOR_QR';
+    const isConnecting = status === 'CONNECTING';
+
+    const statusColor = isConnected ? '#22c55e' : isWaiting || isConnecting ? '#eab308' : '#ef4444';
+    const statusLabel = isConnected ? 'Connected' : isWaiting ? 'Waiting for QR Scan' : isConnecting ? 'Connecting...' : 'Not Connected';
+
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <Smartphone className="w-5 h-5 text-primary" />
-                            WhatsApp Connection
-                        </CardTitle>
-                        <CardDescription>Manage the Baileys service connection.</CardDescription>
+        <div style={{ fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Status Card */}
+            <div style={{
+                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                border: '1px solid #2a2a4a',
+                borderRadius: '20px',
+                padding: '28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '20px',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                        width: '56px', height: '56px',
+                        borderRadius: '16px',
+                        background: isConnected ? 'rgba(34,197,94,0.15)' : 'rgba(234,179,8,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: `1px solid ${statusColor}30`,
+                    }}>
+                        {isConnected ? <Wifi size={26} color="#22c55e" /> : <WifiOff size={26} color={statusColor} />}
                     </div>
-                    <div className="px-3 py-1 rounded-full text-xs font-semibold bg-neutral-100 border">
-                        Status: <span className="text-primary">{status}</span>
+                    <div>
+                        <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WhatsApp Status</div>
+                        <div style={{ color: '#f1f5f9', fontSize: '20px', fontWeight: '700' }}>{statusLabel}</div>
                     </div>
                 </div>
-            </CardHeader>
-            <CardContent>
-                {status === 'WAITING_FOR_QR' && qrCode ? (
-                    <div className="flex flex-col items-center justify-center p-8 bg-neutral-50 rounded-xl border">
-                        <QRCodeSVG value={qrCode} size={256} className="bg-white p-4 rounded-xl shadow-sm" />
-                        <p className="mt-4 text-sm text-muted-foreground text-center">
-                            Scan this QR code with the Dukanzo WhatsApp account.<br/>
-                            Open WhatsApp &gt; Linked Devices &gt; Link a device.
-                        </p>
-                    </div>
-                ) : status === 'CONNECTED' ? (
-                    <div className="p-8 bg-green-50 text-green-700 rounded-xl border border-green-200 flex flex-col items-center">
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                            <Smartphone className="w-6 h-6 text-green-600" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                        width: '10px', height: '10px', borderRadius: '50%',
+                        background: statusColor,
+                        boxShadow: `0 0 10px ${statusColor}`,
+                        animation: isConnected ? 'none' : 'pulse 2s infinite',
+                    }} />
+                    <button
+                        onClick={fetchStatus}
+                        style={{
+                            background: 'transparent', border: '1px solid #2a2a4a',
+                            borderRadius: '10px', padding: '8px', cursor: 'pointer',
+                            color: '#64748b', display: 'flex', alignItems: 'center',
+                        }}
+                        title="Refresh"
+                    >
+                        <RefreshCw size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* QR Code Area */}
+            <div style={{
+                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                border: '1px solid #2a2a4a',
+                borderRadius: '20px',
+                padding: '40px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                minHeight: '340px',
+                justifyContent: 'center',
+            }}>
+                {isWaiting && qrCode ? (
+                    <>
+                        <div style={{
+                            background: 'white',
+                            padding: '20px',
+                            borderRadius: '20px',
+                            boxShadow: '0 0 60px rgba(234,179,8,0.2)',
+                            marginBottom: '24px',
+                        }}>
+                            <QRCodeSVG value={qrCode} size={220} />
                         </div>
-                        <h3 className="font-bold text-lg">WhatsApp Connected</h3>
-                        <p className="text-sm mt-1 opacity-80">The Baileys service is actively connected and ready to send messages.</p>
-                    </div>
+                        <div style={{ color: '#f1f5f9', fontWeight: '700', fontSize: '18px', marginBottom: '8px' }}>
+                            Scan with WhatsApp
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', maxWidth: '300px', lineHeight: '1.6' }}>
+                            Open WhatsApp → <strong style={{ color: '#94a3b8' }}>Settings → Linked Devices → Link a Device</strong>
+                        </div>
+                    </>
+                ) : isConnected ? (
+                    <>
+                        <div style={{
+                            width: '80px', height: '80px', borderRadius: '50%',
+                            background: 'rgba(34,197,94,0.15)',
+                            border: '2px solid rgba(34,197,94,0.3)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: '20px',
+                        }}>
+                            <ShieldCheck size={36} color="#22c55e" />
+                        </div>
+                        <div style={{ color: '#f1f5f9', fontWeight: '700', fontSize: '20px', marginBottom: '8px' }}>
+                            WhatsApp Connected!
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center' }}>
+                            OTPs are being delivered via WhatsApp to your customers.
+                        </div>
+                    </>
+                ) : isConnecting ? (
+                    <>
+                        <Loader2 size={40} color="#eab308" style={{ animation: 'spin 1s linear infinite', marginBottom: '20px' }} />
+                        <div style={{ color: '#f1f5f9', fontWeight: '600', fontSize: '18px', marginBottom: '8px' }}>
+                            Connecting...
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '14px' }}>
+                            Initializing Baileys WhatsApp session.
+                        </div>
+                    </>
                 ) : (
-                    <div className="p-8 bg-neutral-50 rounded-xl border text-center text-muted-foreground">
-                        {status === 'CONNECTING' ? (
-                            <div className="flex flex-col items-center">
-                                <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
-                                <p>Connecting to WhatsApp Service...</p>
-                            </div>
-                        ) : (
-                            <p>No active WhatsApp connection.</p>
-                        )}
-                    </div>
+                    <>
+                        <div style={{
+                            width: '80px', height: '80px', borderRadius: '50%',
+                            background: 'rgba(100,116,139,0.15)',
+                            border: '2px solid rgba(100,116,139,0.2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: '20px',
+                        }}>
+                            <Smartphone size={36} color="#64748b" />
+                        </div>
+                        <div style={{ color: '#94a3b8', fontWeight: '600', fontSize: '18px', marginBottom: '8px' }}>
+                            No Device Linked
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', marginBottom: '28px' }}>
+                            Click "Link Device" to generate a QR code and connect your WhatsApp.
+                        </div>
+                        <button
+                            onClick={() => handleAction('link')}
+                            disabled={isLoading}
+                            style={{
+                                background: 'linear-gradient(135deg, #eab308, #ca8a04)',
+                                border: 'none', borderRadius: '14px',
+                                padding: '14px 32px', cursor: 'pointer',
+                                color: '#000', fontWeight: '700', fontSize: '16px',
+                                display: 'flex', alignItems: 'center', gap: '10px',
+                                boxShadow: '0 4px 20px rgba(234,179,8,0.3)',
+                                opacity: isLoading ? 0.7 : 1,
+                            }}
+                        >
+                            {isLoading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Smartphone size={18} />}
+                            Link Device
+                        </button>
+                    </>
                 )}
-            </CardContent>
-            <CardFooter className="flex gap-4">
-                {status !== 'CONNECTED' && status !== 'CONNECTING' && status !== 'WAITING_FOR_QR' && (
-                    <Button onClick={() => handleAction('link')} disabled={isLoading} className="gap-2">
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
-                        Link Device
-                    </Button>
-                )}
-                {(status === 'CONNECTED' || status === 'WAITING_FOR_QR') && (
-                    <Button variant="destructive" onClick={() => handleAction('disconnect')} disabled={isLoading} className="gap-2">
-                        {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-                        Disconnect Device
-                    </Button>
-                )}
-            </CardFooter>
-        </Card>
+            </div>
+
+            {/* Disconnect */}
+            {(isConnected || isWaiting) && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                        onClick={() => handleAction('disconnect')}
+                        disabled={isLoading}
+                        style={{
+                            background: 'rgba(239,68,68,0.1)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            borderRadius: '12px', padding: '10px 20px',
+                            cursor: 'pointer', color: '#ef4444',
+                            fontWeight: '600', fontSize: '14px',
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                        }}
+                    >
+                        {isLoading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <LogOut size={15} />}
+                        Disconnect
+                    </button>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+            `}</style>
+        </div>
     );
 }

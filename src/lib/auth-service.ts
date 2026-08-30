@@ -33,7 +33,6 @@ export const AuthService = {
 
       if (error) {
         console.error("AuthService sendOTP Error:", error.message);
-        // Map Supabase errors to user-friendly messages
         if (error.message.includes('rate limit') || error.message.includes('too many requests')) {
           return { success: false, error: "Too many requests. Please wait before trying again." };
         }
@@ -73,6 +72,69 @@ export const AuthService = {
     } catch (err) {
       console.error("Unexpected error in verifyOTP:", err);
       return { success: false, sessionEstablished: false, error: "An unexpected error occurred. Please try again later." };
+    }
+  },
+
+  /**
+   * Logs in a user with Phone and Password
+   */
+  async login(phone: string, password: string): Promise<VerifyOTPResponse> {
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        phone,
+        password,
+      });
+
+      if (error) {
+        return { success: false, sessionEstablished: false, error: error.message };
+      }
+      return { success: true, sessionEstablished: !!data.session };
+    } catch (err) {
+      console.error(err);
+      return { success: false, sessionEstablished: false, error: "An unexpected error occurred." };
+    }
+  },
+
+  /**
+   * Registers a new user with Phone and Password. 
+   * This will trigger an OTP verification SMS from Supabase.
+   */
+  async signUp(phone: string, password: string): Promise<OTPResponse> {
+    const supabase = createClient();
+    try {
+      const { error } = await supabase.auth.signUp({
+        phone,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes('already registered')) {
+          return { success: false, error: "This phone number is already registered. Please log in." };
+        }
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err) {
+      console.error(err);
+      return { success: false, error: "An unexpected error occurred." };
+    }
+  },
+
+  /**
+   * Updates the user's password. The user must be logged in (e.g. after verifying a reset OTP).
+   */
+  async updatePassword(password: string): Promise<OTPResponse> {
+    const supabase = createClient();
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err) {
+      console.error(err);
+      return { success: false, error: "An unexpected error occurred." };
     }
   },
 

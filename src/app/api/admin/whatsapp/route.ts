@@ -1,27 +1,31 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 const WHATSAPP_SERVICE_URL = process.env.WHATSAPP_SERVICE_URL || 'http://localhost:3001';
 const WHATSAPP_SERVICE_SECRET = process.env.WHATSAPP_SERVICE_SECRET || '';
 
-// Reusable auth check
-async function requireAdmin() {
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+// Check admin PIN from cookie or header
+async function requireAdmin(req: Request) {
+    const adminPin = process.env.ADMIN_PIN || '0000';
     
-    if (!session?.user?.phone) return false;
+    // Check cookie
+    const cookieStore = await cookies();
+    if (cookieStore.get('admin_authed')?.value === adminPin) return true;
     
-    const adminPhone = process.env.ADMIN_PHONE?.replace(/[^0-9+]/g, '');
-    const userPhone = session.user.phone.replace(/[^0-9+]/g, '');
-    
-    if (!adminPhone || userPhone !== adminPhone && `+${userPhone}` !== adminPhone) {
-        return false;
-    }
-    return true;
+    // Check X-Admin-Pin header (sent by the client)
+    const headerPin = req.headers.get('X-Admin-Pin');
+    if (headerPin === adminPin) return true;
+
+    // Check URL param via Referer (fallback: check query param from URL)
+    const url = new URL(req.url);
+    const pinParam = url.searchParams.get('pin');
+    if (pinParam === adminPin) return true;
+
+    return false;
 }
 
-export async function GET() {
-    if (!(await requireAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export async function GET(req: Request) {
+    if (!(await requireAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
         const response = await fetch(`${WHATSAPP_SERVICE_URL}/api/status`, {
@@ -37,10 +41,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    if (!(await requireAdmin())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!(await requireAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const { action } = await req.json();
+        const body = await req.json();
+        const { action } = body;
         
         let endpoint = '';
         if (action === 'link') endpoint = '/api/link';

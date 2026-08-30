@@ -15,7 +15,7 @@ export class WhatsAppService {
     private status: string = 'NOT_CONNECTED';
     
     constructor() {
-        this.supabaseUrl = process.env.SUPABASE_URL || '';
+        this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
         this.supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
         if (!this.supabaseUrl || !this.supabaseKey) {
             throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
