@@ -145,12 +145,34 @@ Deno.serve(async (req) => {
     const { error: updateError } = await supabaseAdmin
       .from('project_requests')
       .update({
-        request_reference: requestReference, // We also need to add this column in migration!
+        request_reference: requestReference,
         canonical_srs_data: canonicalData
       })
       .eq('id', requestId);
 
     if (updateError) throw updateError;
+
+    // Trigger SRS Generation and Email Notification safely
+    // We do not want to fail the overall request if document generation or email fails.
+    try {
+      const { data: srsResponse, error: srsInvokeError } = await supabaseClient.functions.invoke('generate-srs', {
+        body: { requestId }
+      });
+      
+      if (srsInvokeError) {
+        console.error("Failed to invoke generate-srs:", srsInvokeError);
+      } else if (srsResponse?.documentId) {
+        // Only attempt email if SRS generated successfully
+        const { error: emailInvokeError } = await supabaseClient.functions.invoke('send-project-email', {
+          body: { requestId, documentId: srsResponse.documentId }
+        });
+        if (emailInvokeError) {
+          console.error("Failed to invoke send-project-email:", emailInvokeError);
+        }
+      }
+    } catch (backgroundErr) {
+      console.error("Background task error in submit-project-request:", backgroundErr);
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 
