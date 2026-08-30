@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { CallUs } from "@/components/layout/CallUs";
 
 const inter = Inter({
-  variable: "--font-inter",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Dukanzo - Come Into Digital",
-  description: "Dukanzo web development agency",
+  title: "Dukanzo | Come Into Digital",
+  description: "Dukanzo offers professional, transparent, and affordable website development for Indian businesses. Choose your tier, configure features, and go digital.",
+  openGraph: {
+    title: "Dukanzo | Come Into Digital",
+    description: "Professional website development tailored for your business.",
+    url: "https://dukanzo.in",
+    siteName: "Dukanzo",
+    locale: "en_IN",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -20,9 +28,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className={`${inter.className} min-h-full flex flex-col`}>
+        {children}
+        <CallUs />
+      </body>
     </html>
   );
 }
