@@ -37,13 +37,15 @@ export async function updateSession(request: NextRequest) {
 
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
-    request.nextUrl.pathname.startsWith('/configure') // Example protected route
+    (request.nextUrl.pathname.startsWith('/configure') ||
+     request.nextUrl.pathname.startsWith('/requirements') ||
+     request.nextUrl.pathname.startsWith('/review'))
   ) {
-    // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/auth'
+    // Preserve the original URL so we can redirect back after login
+    url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search)
     return NextResponse.redirect(url)
   }
 
