@@ -48,15 +48,16 @@ const STEPS = [
 export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
   const router = useRouter();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [tierData, setTierData] = useState<any>(null);
+  const [tierData, setTierData] = useState<Record<string, unknown> | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   
-  const { register, control, handleSubmit, watch, reset, getValues, formState: { errors } } = useForm();
+  const { register, control, handleSubmit, reset, getValues, formState: { errors } } = useForm();
   
   useEffect(() => {
     // Load config from Issue 5 (tier + selected features)
     const savedConfig = localStorage.getItem("dukanzo_configuration");
     if (savedConfig) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTierData(JSON.parse(savedConfig));
     }
     
@@ -87,7 +88,7 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
     if (isSubmitting) return; // Prevent duplicate submission
 
     setIsSubmitting(true);
@@ -123,7 +124,7 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
 
       // Redirect to success screen with request ID
       router.push(`/success?id=${responseData.requestReference}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Submission error:", err);
       alert("We couldn't submit your requirements right now. Please try again.");
     } finally {
@@ -170,7 +171,7 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
             render={({ field }) => (
               <RadioGroup 
                 onValueChange={field.onChange} 
-                defaultValue={field.value} 
+                value={field.value as string} 
                 className="mt-3 space-y-2"
               >
                 {q.options.map(opt => (
@@ -241,7 +242,7 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
       <div className="space-y-6">
         <div className="bg-primary/5 p-4 rounded-xl border border-primary/20 mb-6">
           <h3 className="font-bold text-lg mb-2">Package Selected</h3>
-          <p className="text-muted-foreground">{tierData?.tierName} Tier</p>
+          <p className="text-muted-foreground">{tierData?.tierName as string} Tier</p>
         </div>
         
         {STEPS.filter(s => s !== 'Review').map(stepName => {
@@ -331,7 +332,7 @@ export function RequirementsBuilder({ questions }: RequirementsBuilderProps) {
             {currentStepName === 'Special Requirements' && (
               <div className="space-y-2">
                 <Label className="text-lg font-semibold block">
-                  Anything else you'd like us to know?
+                  Anything else you&apos;d like us to know?
                 </Label>
                 <p className="text-sm text-muted-foreground pb-2">
                   Have a specific feature request or custom requirement not covered? Describe it here in detail.
