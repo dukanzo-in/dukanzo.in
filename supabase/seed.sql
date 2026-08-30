@@ -8,13 +8,23 @@ INSERT INTO service_tiers (id, name, description, base_price) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Tier Options
-INSERT INTO tier_options (tier_id, option_key, option_value) VALUES
-('11111111-1111-1111-1111-111111111111', 'pages', 'Up to 5 Pages'),
-('11111111-1111-1111-1111-111111111111', 'revisions', '2 Revisions'),
-('22222222-2222-2222-2222-222222222222', 'pages', 'Up to 10 Pages'),
-('22222222-2222-2222-2222-222222222222', 'revisions', '5 Revisions'),
-('33333333-3333-3333-3333-333333333333', 'pages', 'Unlimited Pages'),
-('33333333-3333-3333-3333-333333333333', 'revisions', 'Unlimited Revisions')
+INSERT INTO tier_options (tier_id, option_key, option_value, display_name, input_type, choices, display_order) VALUES
+-- Basic Tier Options
+('11111111-1111-1111-1111-111111111111', 'pages', '1', 'Number of Pages', 'select', '["1", "2", "3", "4", "5"]', 1),
+('11111111-1111-1111-1111-111111111111', 'contact_form', 'true', 'Basic Contact Form', 'checkbox', null, 2),
+('11111111-1111-1111-1111-111111111111', 'responsive', 'true', 'Mobile Responsive', 'checkbox', null, 3),
+
+-- Standard Tier Options
+('22222222-2222-2222-2222-222222222222', 'pages', '5', 'Number of Pages', 'select', '["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]', 1),
+('22222222-2222-2222-2222-222222222222', 'gallery', 'true', 'Image Gallery', 'checkbox', null, 2),
+('22222222-2222-2222-2222-222222222222', 'whatsapp', 'true', 'WhatsApp Integration', 'checkbox', null, 3),
+('22222222-2222-2222-2222-222222222222', 'maps', 'false', 'Google Maps Integration', 'checkbox', null, 4),
+
+-- Premium Tier Options
+('33333333-3333-3333-3333-333333333333', 'pages', 'Unlimited', 'Number of Pages', 'select', '["1-10", "11-20", "20+", "Unlimited"]', 1),
+('33333333-3333-3333-3333-333333333333', 'ecommerce', 'false', 'E-Commerce / Store', 'checkbox', null, 2),
+('33333333-3333-3333-3333-333333333333', 'custom_backend', 'false', 'Custom Backend Features', 'checkbox', null, 3),
+('33333333-3333-3333-3333-333333333333', 'design_system', 'true', 'Custom UI/UX Design', 'checkbox', null, 4)
 ON CONFLICT DO NOTHING;
 
 -- 3. Requirement Questions
